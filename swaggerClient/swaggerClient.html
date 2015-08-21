@@ -1,0 +1,419 @@
+<script src='swagger-client/reqs/swagger-client.js' type='text/javascript'></script>
+
+<style>
+table {
+    border-collapse: collapse;
+    font-size: 12px;
+}
+ table td, table th {
+    padding: 5px;
+ }
+ table th {
+    border-bottom: 1px solid black;
+}
+table tr td:not(:first-child), table tr th:not(:first-child) {
+  border-left: 1px solid black;
+}
+</style>
+
+<script type="text/x-red" data-template-name="swagger client">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-url"><i class="icon-tag"></i>Swagger Url</label>
+        <input type="text" id="node-input-url" placeholder="Url" style="width:300px;">
+        <button type="button" id="swaggerclient-urlSaveButton" class="btn">Save</button>
+    </div>
+    <div class="form-row hidden" id="swaggerclient-apirow">
+        <label for="node-input-api"><i class="icon-tag"></i> Api</label>
+        <select type="text" id="node-input-api" style="width:60%;">
+            <option value="" disabled selected>Select your API</option>
+        </select>
+        <button type="button" id="swaggerclient-apiSaveButton" class="btn">Go</button>
+    </div>
+    <div class="form-row hidden" id="swaggerclient-resourcerow">
+        <label for="node-input-resource"><i class="icon-tag"></i> Resource</label>
+        <select type="text" id="node-input-resource" style="width:60%;">
+            <option value="" disabled selected>Select your Resource</option>
+        </select>
+        <button type="button" id="swaggerclient-resourceSaveButton" class="btn">Go</button>
+    </div>
+    <div class="form-tips hidden" id="swaggerclient-urlwarningrow">
+        <i class="fa fa-2x fa-warning"></i><span id="swaggerclient-urlwarningrow-message" style="padding: 10px; font-weight: bold"></span>
+    </div>
+    <div class="form-tips hidden" id="swaggerclient-urlerrorrow" style="background-color:#e49191;">
+        <span class="fa-stack"><i class="fa fa-circle-o fa-stack-2x"></i><i class="fa fa-exclamation fa-stack-1x"></i></span><span id="swaggerclient-urlerrorrow-message" style="padding: 10px; font-weight: bold"></span>
+    </div>
+    <div class="hidden" id="swaggerclient-paramssection">
+        <hr> 
+        <h5>Parameters</h5>
+        
+        <div class="" id="swaggerclient-paramslist" style="margin-left:25px;">
+            <table id="swaggerclient-paramslisttable" style="width: 100%">
+                <tr>
+                    <th style="width: 30%">Parameter</th>
+                    <th style="width: 20%">Type</th>
+                    <th style="width: 50%">Value</th>
+                </tr>
+            </table>
+        </div>
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="swagger client">
+    <p>A simple node that converts the message payloads into all lower-case characters</p>
+</script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('swagger client',{
+        category: 'swagger',
+        color: '#a6bbcf',
+        defaults: {
+            name: {value:""},
+            url: {value: ""},
+            api: {value: ""},
+            resource: {value: ""},
+            params: {value: ""},
+            swaggerClient: {value: ""}
+        },
+        inputs:1,
+        outputs:1,
+        icon: "swagger_icon.png",
+        label: function() {
+            return this.name||"Swagger Client";
+        },
+        onpaletteadd: function() {
+            
+        },
+        oneditprepare: function() {
+            var node = this;
+            var swaggerClient;
+            
+            function setupClient(url, callback){
+                
+                hide.errors();
+                
+                swaggerClient = new SwaggerClient({
+                        //url: 'http://petstore.swagger.io/v2/swagger.json',    // 2.0
+                        //url: 'https://dweet.io/play/definition',  // 1.2
+                        url: url,
+                        useJQuery: true,
+                        success: function () {
+                            if(runningCorrectSwaggerVersion()){
+                                $('#node-input-url').css('border-color', '#4B8400');
+                                loadApis(function(){
+                                    console.log('apis successfully loaded');
+                                    callback();
+                                });
+                                
+                            } else{
+                                show.warning('We only support Swagger 2.0. The API you referenced hosts Swagger ' + this.swaggerVersion);
+                            }
+                            console.log(this);
+                        },
+                        failure: function (err) {
+                            console.log('fail');
+                            show.error(err);
+                        }
+                    });
+            }        
+            
+            function runningCorrectSwaggerVersion (){
+                return (swaggerClient.swaggerVersion == '2.0');
+            }
+            
+            function loadApis(callback){
+                clear.apis();
+                var apis = get.apis();
+                var options = $('#node-input-api').prop('options');
+                $.each(apis, function(api) {
+                    var newOpt = apis[api];
+                    options[options.length] = new Option(newOpt, newOpt);
+                });
+                show.apis();
+                callback();
+            };
+            
+            function loadResources(api, callback){
+                clear.resources();
+                var resources = get.resources(api);
+                var options = $('#node-input-resource').prop('options');
+                $.each(resources, function(resource) {
+                    var newOpt = resources[resource];
+                    if(newOpt != 'help')
+                        options[options.length] = new Option(newOpt, newOpt);
+                });
+                show.resources();
+                callback();
+            };
+            
+            function loadParams(api, resource, callback){
+                clear.params();
+                var helpText = swaggerClient.apis[api][resource].help();
+                var params = parseHelpText(helpText);
+                for(var p in params){
+                    if(params[p].simple){
+                        addSimpleParamRowToTable(params[p])
+                    }
+                }
+                if(params.length){
+                    show.params();
+                }
+                callback();
+            };
+            
+            function parseHelpText(help){
+                var helpObjs = help.split('\n');
+                helpObjs.splice(0,2);
+                var params = [];
+                for (var obj in helpObjs){
+                    params.push(parseHelpObj(helpObjs[obj]));
+                }
+                return params;
+            }
+            
+            function parseHelpObj(obj){
+                var type = obj.match(/\((.*)\)/g)[0];
+                var id = obj.split(type)[0];
+                var info = obj.split(type)[1];
+                id = id.substring(id.indexOf('*') + 1).trim();
+                type = type.substring(1, type.length - 1);
+                info = info.substring(info.indexOf(':') + 1).trim();
+                if(type.match(/<span class="strong"(.*?)\{/g)){
+                    console.log('type is a definition');
+                    var model = type.match(/<span class="strong">(.*?)\{/g)[0];
+                    model = model.substring(model.indexOf('<span class="strong">') + 21, model.lastIndexOf('{')).trim();
+                    type = model;
+                    return getModel(model);
+                } else{
+                    return {id:id, type: type, info:info, simple: true};
+                }
+            }
+            
+            function getModel(model){
+                var modelDef = swaggerClient.models[model].definition;
+                console.log('modeldef -----');
+                console.log(modelDef);
+                console.log('-----');
+                var model = {
+                    model_id: model,
+                    properties: {}
+                };
+                for (var prop in modelDef.properties){
+                    if(modelDef.properties[prop].type){
+                        model.properties[prop] = modelDef.properties[prop];
+                    } else if(modelDef.properties[prop]['$ref']){
+                        model.properties[prop] = getReference(modelDef.properties[prop]['$ref']);
+                    }
+                }
+                for(var req in modelDef.required){
+                    model.properties[modelDef.required[req]].required = true;
+                }
+                model.simple = false;
+                return model;
+            }
+            
+            function getReference(ref){
+                refId = ref.split('#/definitions/')[1];
+                refDef = {
+                    type: swaggerClient.definitions[refId].type,
+                    properties: swaggerClient.definitions[refId].properties
+                };
+                return refDef;
+            }
+            
+            function addSimpleParamRowToTable(param){
+                console.log('in addSimple row: '+ param.id);
+                $('#swaggerclient-paramslisttable').find('tbody')
+                    .append($('<tr>', {class: 'paramRow'})
+                        .append($('<td>')
+                            .append($('<span>', {class: 'paramId'})
+                                .text(param.id)
+                            )
+                            .append($('<div>', {style: 'font-size:8px; margin-left: 20px'})
+                                .text(param.info)
+                            )
+                        )
+                        .append($('<td>')
+                            .text(param.type)
+                        )
+                        .append($('<td>')
+                            .append($('<input>', {type: 'text'})
+                            )
+                        )
+                    )
+            }
+            
+            var get = {
+                apis: function() {
+                    return (swaggerClient.apis) ? Object.keys(swaggerClient.apis) : null;
+                },
+                resources: function(api) {
+                    return (swaggerClient.apis[api]) ? Object.keys(swaggerClient.apis[api]) : null;
+                }
+            }
+            
+            var show = {
+                apis: function () {
+                    hide.params();
+                    hide.resources();
+                    $('#swaggerclient-apirow').show();
+                },
+                resources: function() {
+                    hide.params();
+                    $('#swaggerclient-resourcerow').show();
+                },
+                params: function() {
+                    $('#swaggerclient-paramssection').show();
+                },
+                warning: function(err) {
+                    $('#node-input-url').css('border-color', '#AD1625');
+                    $('#swaggerclient-urlwarningrow-message').text(err);
+                    $('#swaggerclient-urlwarningrow').show();
+                },
+                error: function(err) {
+                    $('#node-input-url').css('border-color', '#AD1625');
+                    $('#swaggerclient-urlerrorrow-message').text(err);
+                    $('#swaggerclient-urlerrorrow').show();
+                }
+            }
+            
+            var clear = {
+                apis: function () {
+                    $('#node-input-api').find('option:gt(0)').remove();
+                },
+                resources: function() {
+                    $('#node-input-resource').find('option:gt(0)').remove();
+                },
+                params: function() {
+                    $('#swaggerclient-paramslisttable').find('tr:gt(0)').remove();
+                }
+            }
+            
+            var hide = {
+                apis: function() {
+                    $('#swaggerclient-apirow').hide();
+                },
+                resources: function() {
+                    $('#swaggerclient-resourcerow').hide();
+                },
+                params: function() {
+                    $('#swaggerclient-paramssection').hide();
+                },
+                errors: function() {
+                    $('#node-input-url').css('border-color', '');
+                    $('#swaggerclient-urlwarningrow').hide();
+                    $('#swaggerclient-urlerrorrow').hide();
+                }
+            }
+            
+            $('#swaggerclient-urlSaveButton').click(function(){
+                var url = $('#node-input-url').val();
+                if(url){
+                    setupClient(url, function(){
+                        console.log('client setup complete.');
+                    });
+                }
+                else{
+                    hide.errors();
+                    show.error('Please provide a URL to the Swagger definition');
+                }
+            });
+            
+            $('#swaggerclient-apiSaveButton').click(function(){
+                var api = $('#node-input-api').val();
+                console.log(api);
+                if(api){
+                    loadResources(api, function(){
+                        console.log('resouces successfully loaded.');
+                    });
+                }
+                else{
+                    hide.errors();
+                    show.error('Load resources fail');
+                }
+            });
+            
+            $('#swaggerclient-resourceSaveButton').click(function(){
+                var resource = $('#node-input-resource').val();
+                console.log(resource);
+                if(resource){
+                    loadParams($('#node-input-api').val(), resource, function(){
+                        console.log('params successfully loaded.');
+                    });
+                }
+                else{
+                    hideAllErrors();
+                    show.error('Load params fail');
+                }
+            });
+            
+            
+            if(node.url){               //previously setup, re-initialize
+                setupClient(node.url, function(){
+                    console.log('client setup from previous config');
+                    if(node.api){
+                        console.log('found old api...' + node.api);
+                        $('#node-input-api option').filter(function() { 
+                            return ($(this).text() == node.api);
+                        }).prop('selected', true);
+                        
+                        loadResources(node.api, function(){
+                            console.log('successfully loaded resources.');
+                            if(node.resource){
+                                console.log('found old resource...' + node.resource);
+                                $('#node-input-resource option').filter(function() { 
+                                    return ($(this).text() == node.resource);
+                                }).prop('selected', true);
+                                
+                                loadParams(node.api, node.resource, function(){
+                                    console.log('succesfully loaded params');
+                                    if(node.params){
+                                        console.log('found old params...' + JSON.stringify(node.params));
+                                        for(var p in node.params){
+                                            $($($('span:contains(' + p + ')')
+                                            .filter(
+                                              function(){ return $(this).text() == p; }
+                                            ).parent().siblings()[1]).children()[0]).val(node.params[p]);
+                                        }
+                                    }
+                                })
+                            }
+                        });
+                    }
+                });
+            }
+            
+        },
+        oneditsave: function(){
+            this.url = $('#node-input-url').val();
+            this.api = $('#node-input-api').val();
+            this.resource = $('#node-input-resource').val();
+            this.params = compileParams();
+            
+            function compileParams(){
+                var paramList;
+                var params = $('#swaggerclient-paramslisttable .paramRow');
+
+                for (var i = 0; i < params.length; i++){
+                    var id = $($(params[i]).children()[0]).find('span').text();
+                    var val = $($(params[i]).children()[2]).find('input').val();
+                    if(id && val){
+                        if(!paramList){
+                            paramList = {};
+                        }
+                        paramList[id] = val;
+                    }
+                }
+                return paramList;
+            }
+            
+            console.log(this.url);
+            console.log(this.api);
+            console.log(this.resource);
+            console.log(JSON.stringify(this.params));
+        }
+    });
+</script>
