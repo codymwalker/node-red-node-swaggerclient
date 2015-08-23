@@ -27,21 +27,19 @@ pre {
     <div class="form-row">
         <label for="node-input-url"><i class="icon-tag"></i>Swagger Url</label>
         <input type="text" id="node-input-url" placeholder="Url" style="width:300px;">
-        <button type="button" id="swaggerclient-urlSaveButton" class="btn">Save</button>
+        <button type="button" id="swaggerclient-urlSaveButton" class="btn">✔</button>
     </div>
     <div class="form-row hidden" id="swaggerclient-apirow">
         <label for="node-input-api"><i class="icon-tag"></i> Api</label>
-        <select type="text" id="node-input-api" style="width:60%;">
+        <select type="text" id="node-input-api" >
             <option value="" disabled selected>Select your API</option>
         </select>
-        <button type="button" id="swaggerclient-apiSaveButton" class="btn">Go</button>
     </div>
     <div class="form-row hidden" id="swaggerclient-resourcerow">
         <label for="node-input-resource"><i class="icon-tag"></i> Resource</label>
-        <select type="text" id="node-input-resource" style="width:60%;">
+        <select type="text" id="node-input-resource">
             <option value="" disabled selected>Select your Resource</option>
         </select>
-        <button type="button" id="swaggerclient-resourceSaveButton" class="btn">Go</button>
     </div>
     <div class="form-tips hidden" id="swaggerclient-urlwarningrow">
         <i class="fa fa-2x fa-warning"></i><span id="swaggerclient-urlwarningrow-message" style="padding: 10px; font-weight: bold"></span>
@@ -117,8 +115,7 @@ pre {
                             console.log(this);
                         },
                         failure: function (err) {
-                            console.log('fail');
-                            show.error(err);
+                            callback(err);
                         }
                     });
             }        
@@ -165,6 +162,8 @@ pre {
                 }
                 if(params.length){
                     show.params();
+                } else{
+                    hide.params();
                 }
                 callback();
             };
@@ -427,46 +426,7 @@ pre {
                 }
             }
             
-            $('#swaggerclient-urlSaveButton').click(function(){
-                var url = $('#node-input-url').val();
-                if(url){
-                    setupClient(url, function(){
-                        console.log('client setup complete.');
-                    });
-                }
-                else{
-                    hide.errors();
-                    show.error('Please provide a URL to the Swagger definition');
-                }
-            });
             
-            $('#swaggerclient-apiSaveButton').click(function(){
-                var api = $('#node-input-api').val();
-                //console.log(api);
-                if(api){
-                    loadResources(api, function(){
-                        console.log('resouces successfully loaded.');
-                    });
-                }
-                else{
-                    hide.errors();
-                    show.error('Load resources fail');
-                }
-            });
-            
-            $('#swaggerclient-resourceSaveButton').click(function(){
-                var resource = $('#node-input-resource').val();
-                //console.log(resource);
-                if(resource){
-                    loadParams($('#node-input-api').val(), resource, function(){
-                        console.log('params successfully loaded.');
-                    });
-                }
-                else{
-                    hideAllErrors();
-                    show.error('Load params fail');
-                }
-            });
             
             
             if(node.url){               //previously setup, re-initialize
@@ -503,6 +463,50 @@ pre {
                     }
                 });
             }
+            
+            $('#swaggerclient-urlSaveButton').click(function(){
+                hide.errors();
+                var url = $('#node-input-url').val();
+                if(url){
+                    setupClient(url, function(err){
+                        if(!err){
+                            console.log('client setup complete.');
+                        } else{
+                            clear.apis();
+                            hide.apis();
+                            clear.resources();
+                            hide.resources();
+                            show.error(err);
+                        }
+                        
+                    });
+                }
+                else{
+                    show.error('Please provide a URL to the Swagger definition');
+                }
+            });
+            
+            $('#node-input-api').change(function(){
+                hide.errors();
+                var api = $(this).val();
+                console.log(api);
+                if(api){
+                    loadResources(api, function(){
+                        console.log('resouces successfully loaded.');
+                    });
+                }
+            });
+            
+            $('#node-input-resource').change(function(){
+                hide.errors();
+                var resource = $(this).val();
+                console.log(resource);
+                if(resource){
+                    loadParams($('#node-input-api').val(), resource, function(){
+                        console.log('params successfully loaded.');
+                    });
+                }
+            });
             
         },
         oneditsave: function(){

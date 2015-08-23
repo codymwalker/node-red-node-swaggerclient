@@ -23,7 +23,7 @@ module.exports = function(RED) {
             console.log('resource: ' + resource);
             console.log('params: ' + JSON.stringify(params));
             
-            if(params['_isModel']){
+            if(params && params['_isModel']){
                 for(var key in params){
                     if(key != '_isModel'){
                         try{
