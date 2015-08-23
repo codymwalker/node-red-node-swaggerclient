@@ -23,6 +23,22 @@ module.exports = function(RED) {
             console.log('resource: ' + resource);
             console.log('params: ' + JSON.stringify(params));
             
+            if(params['_isModel']){
+                for(var key in params){
+                    if(key != '_isModel'){
+                        try{
+                            params = {
+                                body: JSON.parse(params[key])
+                            }
+                        } catch(e){
+                            node.error('Bad JSON in object: ' + key, msg);
+                            return;
+                        }
+                        
+                    }
+                }
+            }
+            
             
             var client = new swaggerjs.SwaggerClient({
                 url: url,

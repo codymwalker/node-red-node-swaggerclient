@@ -14,6 +14,9 @@ table {
 table tr td:not(:first-child), table tr th:not(:first-child) {
   border-left: 1px solid black;
 }
+pre {
+  font-size: 8px;
+}
 </style>
 
 <script type="text/x-red" data-template-name="swagger client">
@@ -53,9 +56,9 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
         <div class="" id="swaggerclient-paramslist" style="margin-left:25px;">
             <table id="swaggerclient-paramslisttable" style="width: 100%">
                 <tr>
-                    <th style="width: 30%">Parameter</th>
-                    <th style="width: 20%">Type</th>
-                    <th style="width: 50%">Value</th>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th style="width: 225px">Value</th>
                 </tr>
             </table>
         </div>
@@ -156,6 +159,8 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
                 for(var p in params){
                     if(params[p].simple){
                         addSimpleParamRowToTable(params[p])
+                    } else{
+                        addModelParamRowToTable(params[p]);
                     }
                 }
                 if(params.length){
@@ -182,11 +187,13 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
                 type = type.substring(1, type.length - 1);
                 info = info.substring(info.indexOf(':') + 1).trim();
                 if(type.match(/<span class="strong"(.*?)\{/g)){
-                    console.log('type is a definition');
+                    //console.log('type is a definition');
                     var model = type.match(/<span class="strong">(.*?)\{/g)[0];
                     model = model.substring(model.indexOf('<span class="strong">') + 21, model.lastIndexOf('{')).trim();
                     type = model;
-                    return getModel(model);
+                    var model = getModel(model);
+                    model.info = info;
+                    return model
                 } else{
                     return {id:id, type: type, info:info, simple: true};
                 }
@@ -194,25 +201,66 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
             
             function getModel(model){
                 var modelDef = swaggerClient.models[model].definition;
-                console.log('modeldef -----');
-                console.log(modelDef);
-                console.log('-----');
+                //console.log('----- modeldef -----');
+                //console.log(modelDef);
+                //console.log('-----');
                 var model = {
                     model_id: model,
-                    properties: {}
+                    properties: {},
+                    type: 'object'
                 };
-                for (var prop in modelDef.properties){
-                    if(modelDef.properties[prop].type){
-                        model.properties[prop] = modelDef.properties[prop];
-                    } else if(modelDef.properties[prop]['$ref']){
-                        model.properties[prop] = getReference(modelDef.properties[prop]['$ref']);
-                    }
-                }
-                for(var req in modelDef.required){
-                    model.properties[modelDef.required[req]].required = true;
-                }
+                model.properties = parseProperties(modelDef.properties);
+                //console.log('--- got returned props ---');
+                //console.log(model.properties);
+                //console.log('--- ---');
                 model.simple = false;
                 return model;
+            }
+            
+            function parseProperties(props){
+                //console.log('--- in parseProps ---');
+                //console.log(props);
+                //console.log('--- ---');
+                var parsedProps = {};
+                for(var p in props){
+                    var currProp = props[p];
+                    if(currProp['$ref']){
+                        //console.log('found a reference... ' + p);
+                        currProp = getReference(currProp['$ref'])
+                    }
+                    if(currProp.type == 'object'){
+                        //console.log('found an object... ' + p);
+                        currProp.properties = parseProperties(currProp.properties);
+                    } else if(currProp.type == 'array'){
+                        //console.log('found an array... ' + p);
+                        currProp.items = parseArrayItems(currProp.items);
+                        //console.log(currProp.items);
+                    } else{
+                        //console.log('found something simple... ' + p + ' with type: ' + currProp.type);
+                    }
+                    parsedProps[p] = currProp;
+                }
+                
+                //console.log('--- returning parsedProps ---');
+                //console.log(parsedProps);
+                //console.log('--- ---');
+                
+                return parsedProps;
+            }
+            
+            function parseArrayItems(items){
+                //console.log('--- in parseArrayItems ---');
+                //console.log(items);
+                //console.log('--- ---');
+                if(items['$ref']){
+                    items = getReference(items['$ref']);
+                }
+                if(items.type == 'object'){
+                    items.properties = parseProperties(items.properties);
+                } else if(items.type == 'array'){
+                    items.items = parseArrayItems(items.items);
+                }
+                return items;
             }
             
             function getReference(ref){
@@ -225,7 +273,8 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
             }
             
             function addSimpleParamRowToTable(param){
-                console.log('in addSimple row: '+ param.id);
+                //console.log('in addSimple row: '+ param.id);
+                //console.log(param);
                 $('#swaggerclient-paramslisttable').find('tbody')
                     .append($('<tr>', {class: 'paramRow'})
                         .append($('<td>')
@@ -244,6 +293,75 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
                             )
                         )
                     )
+            }
+            
+            function addModelParamRowToTable(param){
+                //console.log('in addModel row: ' + param.model_id);
+                //console.log(param);
+                
+                var convertedParam = convertObjectToText(param);
+                
+                //console.log('--- convertedParam ---');
+                //console.log(convertedParam);
+                //console.log('--- ---');
+                
+                $('#swaggerclient-paramslisttable').find('tbody')
+                    .append($('<tr>', {class: 'paramRow'})
+                        .append($('<td>')
+                            .append($('<span>', {class: 'paramId'})
+                                .text(param.model_id)
+                            )
+                            .append($('<div>', {style: 'font-size:8px; margin-left: 20px'})
+                                .text(param.info)
+                            )
+                        )
+                        .append($('<td>')
+                            .append($('<div>')
+                                .html('<pre>' + JSON.stringify(convertedParam, null, 2) + '</pre>')
+                            )
+                        )
+                        .append($('<td>')//, {style: 'vertical-align: top'})
+                            .append($('<textarea>', {cols: 25, rows: 8})
+                            )
+                        )
+                    );
+                
+            }
+            
+            function convertObjectToText(obj){
+                var convertedObj = {};
+                for(var p in obj.properties){
+                    var currProp = obj.properties[p];
+                    var type;
+                    if(currProp.type == 'object'){
+                        //console.log('---- found object in convObj... ' + p);
+                        type = convertObjectToText(currProp);
+                        //console.log(type);
+                        //console.log('----');
+                    } else{
+                        if(currProp.type == 'array'){
+                            //console.log('---- found array in convObj... ' + p);
+                            type = [];
+                            if(currProp.items.type == 'object'){
+                                type.push(convertObjectToText(currProp.items));
+                            } else{
+                                type.push(currProp.items.type);
+                                if(currProp.items.format){
+                                    type[0] = type[0] + ' (' + currProp.items.format + ')';
+                                }
+                            }
+                            //console.log(type);
+                            //console.log('----');
+                        } else{
+                            type = currProp.type;
+                            if(currProp.format){
+                                type = type + ' (' + currProp.format + ')';
+                            }
+                        }
+                    }
+                    convertedObj[p] = type;
+                }
+                return convertedObj;
             }
             
             var get = {
@@ -324,7 +442,7 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
             
             $('#swaggerclient-apiSaveButton').click(function(){
                 var api = $('#node-input-api').val();
-                console.log(api);
+                //console.log(api);
                 if(api){
                     loadResources(api, function(){
                         console.log('resouces successfully loaded.');
@@ -338,7 +456,7 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
             
             $('#swaggerclient-resourceSaveButton').click(function(){
                 var resource = $('#node-input-resource').val();
-                console.log(resource);
+                //console.log(resource);
                 if(resource){
                     loadParams($('#node-input-api').val(), resource, function(){
                         console.log('params successfully loaded.');
@@ -399,12 +517,38 @@ table tr td:not(:first-child), table tr th:not(:first-child) {
 
                 for (var i = 0; i < params.length; i++){
                     var id = $($(params[i]).children()[0]).find('span').text();
-                    var val = $($(params[i]).children()[2]).find('input').val();
+                    var val;
+                    var isModel = $($(params[i]).children()[1]).find('pre').length;
+                    
+                    if(isModel){
+                        val = $($(params[i]).children()[2]).find('textarea').val();
+                        if(id && val){
+                            if(!paramList){
+                                paramList = {};
+                            }
+                            
+                            //paramList[id] = JSON.parse(val);
+                            paramList[id] = val;
+                            paramList['_isModel'] = true;
+                        }
+                    } else{
+                        val = $($(params[i]).children()[2]).find('input').val();
+                        if(id && val){
+                            if(!paramList){
+                                paramList = {};
+                            }
+                            paramList[id] = val;
+                        }
+                    }
+                    
                     if(id && val){
                         if(!paramList){
                             paramList = {};
                         }
                         paramList[id] = val;
+                        if(isModel){
+                            paramList['_isModel'] = true;
+                        }
                     }
                 }
                 return paramList;
