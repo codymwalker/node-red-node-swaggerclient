@@ -18,10 +18,10 @@ module.exports = function(RED) {
                 return;
             }
             
-            console.log('url: ' + url);
-            console.log('api: ' + api);
-            console.log('resource: ' + resource);
-            console.log('params: ' + JSON.stringify(params));
+            //console.log('url: ' + url);
+            //console.log('api: ' + api);
+            //console.log('resource: ' + resource);
+            //console.log('params: ' + JSON.stringify(params));
             
             if(params && params['_isModel']){
                 for(var key in params){
@@ -39,28 +39,67 @@ module.exports = function(RED) {
                 }
             }
             
-            
             var client = new swaggerjs.SwaggerClient({
                 url: url,
                 success: function() {
-                    client[api][resource](params, {responseContentType: 'application/json'}, function(resp){
-                        msg.statusCode = resp.status;
-                        msg.payload = resp.obj;
-                        node.send(msg);
+                    
+                    //Check for missing params
+                    var missingParams = getMissingParams(findApiReqParams(api, resource, client.apisArray), params);
+                    
+                    if(missingParams){
+                        node.error('Missing params: ' + missingParams.toString(), msg);
                         return;
-                    }, function(err){
-                        msg.statusCode = err.status;
-                        msg.payload = err.obj;
-                        node.send(msg);
-                        return;
-                    })
+                    } else{
+                        client[api][resource](params, {responseContentType: 'application/json'}, function(resp){
+                            msg.statusCode = resp.status;
+                            msg.payload = resp.obj;
+                            node.send(msg);
+                            return;
+                        }, function(err){
+                            msg.statusCode = err.status;
+                            msg.payload = err.obj;
+                            node.send(msg);
+                            return;
+                        })
+                    }
                 },
                 failure: function(err) {
                     node.error(err, msg);
                     return;
                 }
-            });
+            })
         });
+    }
+    
+    function findApiReqParams(api, resource, apisArray){
+        var reqParams = [];
+        for(var i=0; i < apisArray.length; i++){
+            if(apisArray[i].path == api){
+                for(var j=0; j < apisArray[i].operationsArray.length; j++){
+                    if(apisArray[i].operationsArray[j].operation.operationId == resource){
+                        for(var k=0; k < apisArray[i].operationsArray[j].operation.parameters.length; k++){
+                            if(apisArray[i].operationsArray[j].operation.parameters[k].required){
+                                reqParams.push(apisArray[i].operationsArray[j].operation.parameters[k].name);
+                            }
+                        }
+                        return reqParams;
+                    }
+                }
+            }
+        }
+    }
+    
+    function getMissingParams(reqParams, params){
+        var missingParams;
+        for(var i=0; i< reqParams.length; i++){
+            if(!(params && params.hasOwnProperty(reqParams[i]))){
+                if(!missingParams){
+                    missingParams = [];
+                }
+                missingParams.push(reqParams[i]);
+            }
+        }
+        return(missingParams || null);
     }
     
     RED.nodes.registerType("swagger client",SwaggerClientNode);
