@@ -105,7 +105,7 @@ module.exports = function(RED) {
     RED.nodes.registerType("swagger client",SwaggerClientNode);
     
     RED.httpAdmin.get('/swagger-client/reqs/*', function(req, res){
-        var filename = path.join(__dirname , '../node_modules/swagger-client/lib', req.params[0]);
+        var filename = path.join(__dirname , '../node_modules/swagger-client/browser', req.params[0]);
         res.sendfile(filename);
     });
 }
