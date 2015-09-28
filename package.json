@@ -1,11 +1,11 @@
 {
-  "name": "node-red-contrib-swaggerclient",
-  "version": "0.0.1",
+  "name": "node-red-node-swaggerclient",
+  "version": "0.0.2",
   "description": "Node-RED node to wrap SwaggerClient.",
   "license": "Apache",
   "repository": {
         "type": "git",
-        "url": "https://github.com/lostinthestory/node-red-contrib-swaggerclient.git"
+        "url": "https://github.com/lostinthestory/node-red-node-swaggerclient.git"
     },
     "keywords": [
         "node-red",
