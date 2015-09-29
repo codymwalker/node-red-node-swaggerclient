@@ -21,24 +21,24 @@ pre {
 
 <script type="text/x-red" data-template-name="swagger client">
     <div class="form-row">
-        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
+        <label for="node-input-name"><i class="icon-tag"></i> <span data-i18n="swaggerClient.label.name">Name</span></label>
+        <input type="text" id="node-input-name" data-i18n="[placeholder]swaggerClient.placeholder.name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-input-url"><i class="icon-tag"></i>Swagger Url</label>
-        <input type="text" id="node-input-url" placeholder="Url" style="width:300px;">
+        <label for="node-input-url"><i class="icon-tag"></i> <span data-i18n="swaggerClient.label.url">Swagger URL</span></label>
+        <input type="text" id="node-input-url" data-i18n="[placeholder]swaggerClient.placeholder.url" placeholder="URL" style="width:60%;">
         <button type="button" id="swaggerclient-urlSaveButton" class="btn">✔</button>
     </div>
     <div class="form-row hidden" id="swaggerclient-apirow">
-        <label for="node-input-api"><i class="icon-tag"></i> Api</label>
+        <label for="node-input-api"><i class="icon-tag"></i> <span data-i18n="swaggerClient.label.api">API</span></label>
         <select type="text" id="node-input-api" >
-            <option value="" disabled selected>Select your API</option>
+            <option value="" disabled selected data-i18n="swaggerClient.placeholder.api">Select Your API</option>
         </select>
     </div>
     <div class="form-row hidden" id="swaggerclient-resourcerow">
-        <label for="node-input-resource"><i class="icon-tag"></i> Resource</label>
+        <label for="node-input-resource"><i class="icon-tag"></i> <span data-i18n="swaggerClient.label.resource">Resource</span></label>
         <select type="text" id="node-input-resource">
-            <option value="" disabled selected>Select your Resource</option>
+            <option value="" disabled selected data-i18n="swaggerClient.placeholder.resource">Select Your Resource</option>
         </select>
     </div>
     <div class="form-tips hidden" id="swaggerclient-urlwarningrow">
@@ -49,14 +49,14 @@ pre {
     </div>
     <div class="hidden" id="swaggerclient-paramssection">
         <hr> 
-        <h5>Parameters</h5>
+        <h5 data-i18n="swaggerClient.label.parameters">Parameters</h5>
         
         <div class="" id="swaggerclient-paramslist" style="margin-left:25px;">
             <table id="swaggerclient-paramslisttable" style="width: 100%">
                 <tr>
-                    <th>Parameter</th>
-                    <th>Type</th>
-                    <th style="width: 225px">Value</th>
+                    <th data-i18n="swaggerClient.table.parameter">Parameter</th>
+                    <th data-i18n="swaggerClient.table.type">Type</th>
+                    <th style="width: 225px" data-i18n="swaggerClient.table.value">Value</th>
                 </tr>
             </table>
         </div>
@@ -64,7 +64,9 @@ pre {
 </script>
 
 <script type="text/x-red" data-help-name="swagger client">
-    <p>A simple node that converts the message payloads into all lower-case characters</p>
+    <p><b>A Node-RED wrapper for the swagger-client package.</b></p>
+    <p>Allows the user to point to an online Swagger definition. It will then parse the Swagger doc and present the available APIs. After selecting an API, the user can select a resource and supply the parameters. The supplied configuration options will be saved in the node, and will be executed when the node receives input.</p>
+    <p>In addition to supplying the parameters in the node configuration, you can also pass it from the msg object by supplying them in <code>msg.params.[param_key]</code></p>
 </script>
 
 <script type="text/javascript">
@@ -110,7 +112,7 @@ pre {
                                 });
                                 
                             } else{
-                                show.warning('We only support Swagger 2.0. The API you referenced hosts Swagger ' + this.swaggerVersion);
+                                show.warning(node._("swaggerClient.error.swaggerversion") + this.swaggerVersion);
                             }
                             console.log(this);
                         },
@@ -200,26 +202,17 @@ pre {
             
             function getModel(model){
                 var modelDef = swaggerClient.models[model].definition;
-                //console.log('----- modeldef -----');
-                //console.log(modelDef);
-                //console.log('-----');
                 var model = {
                     model_id: model,
                     properties: {},
                     type: 'object'
                 };
                 model.properties = parseProperties(modelDef.properties);
-                //console.log('--- got returned props ---');
-                //console.log(model.properties);
-                //console.log('--- ---');
                 model.simple = false;
                 return model;
             }
             
             function parseProperties(props){
-                //console.log('--- in parseProps ---');
-                //console.log(props);
-                //console.log('--- ---');
                 var parsedProps = {};
                 for(var p in props){
                     var currProp = props[p];
@@ -240,17 +233,10 @@ pre {
                     parsedProps[p] = currProp;
                 }
                 
-                //console.log('--- returning parsedProps ---');
-                //console.log(parsedProps);
-                //console.log('--- ---');
-                
                 return parsedProps;
             }
             
             function parseArrayItems(items){
-                //console.log('--- in parseArrayItems ---');
-                //console.log(items);
-                //console.log('--- ---');
                 if(items['$ref']){
                     items = getReference(items['$ref']);
                 }
@@ -272,8 +258,6 @@ pre {
             }
             
             function addSimpleParamRowToTable(param){
-                //console.log('in addSimple row: '+ param.id);
-                //console.log(param);
                 $('#swaggerclient-paramslisttable').find('tbody')
                     .append($('<tr>', {class: 'paramRow'})
                         .append($('<td>')
@@ -295,14 +279,8 @@ pre {
             }
             
             function addModelParamRowToTable(param){
-                //console.log('in addModel row: ' + param.model_id);
-                //console.log(param);
                 
                 var convertedParam = convertObjectToText(param);
-                
-                //console.log('--- convertedParam ---');
-                //console.log(convertedParam);
-                //console.log('--- ---');
                 
                 $('#swaggerclient-paramslisttable').find('tbody')
                     .append($('<tr>', {class: 'paramRow'})
@@ -319,7 +297,7 @@ pre {
                                 .html('<pre>' + JSON.stringify(convertedParam, null, 2) + '</pre>')
                             )
                         )
-                        .append($('<td>')//, {style: 'vertical-align: top'})
+                        .append($('<td>')
                             .append($('<textarea>', {cols: 25, rows: 8})
                             )
                         )
@@ -333,13 +311,9 @@ pre {
                     var currProp = obj.properties[p];
                     var type;
                     if(currProp.type == 'object'){
-                        //console.log('---- found object in convObj... ' + p);
                         type = convertObjectToText(currProp);
-                        //console.log(type);
-                        //console.log('----');
                     } else{
                         if(currProp.type == 'array'){
-                            //console.log('---- found array in convObj... ' + p);
                             type = [];
                             if(currProp.items.type == 'object'){
                                 type.push(convertObjectToText(currProp.items));
@@ -349,8 +323,6 @@ pre {
                                     type[0] = type[0] + ' (' + currProp.items.format + ')';
                                 }
                             }
-                            //console.log(type);
-                            //console.log('----');
                         } else{
                             type = currProp.type;
                             if(currProp.format){
@@ -482,7 +454,7 @@ pre {
                     });
                 }
                 else{
-                    show.error('Please provide a URL to the Swagger definition');
+                    show.error(node._("swaggerClient.error.badurl"));
                 }
             });
             
@@ -530,8 +502,6 @@ pre {
                             if(!paramList){
                                 paramList = {};
                             }
-                            
-                            //paramList[id] = JSON.parse(val);
                             paramList[id] = val;
                             paramList['_isModel'] = true;
                         }

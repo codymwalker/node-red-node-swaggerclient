@@ -1,0 +1,26 @@
+{
+    "swaggerClient": {
+        "label": {
+            "name": "Name",
+            "url": "Swagger URL",
+            "api": "API",
+            "resource": "Resource",
+            "parameters": "Parameters"
+        },
+        "placeholder": {
+            "name": "Name",
+            "url": "Url",
+            "api": "Select Your API",
+            "resource": "Select Your Resource"
+        },
+        "table": {
+            "parameter": "Parameter",
+            "type": "Type",
+            "value": "Value"
+        },
+        "error": {
+            "badurl": "Please provide a URL to the Swagger definition",
+            "swaggerversion": "We only support Swagger 2.0. The API you referenced hosts Swagger "
+        }
+    }
+}
