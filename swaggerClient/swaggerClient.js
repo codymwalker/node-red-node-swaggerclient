@@ -104,8 +104,17 @@ module.exports = function(RED) {
     
     RED.nodes.registerType("swagger client",SwaggerClientNode);
     
+    function sendFile(res,filename) {
+        // Use the right function depending on Express 3.x/4.x
+        if (res.sendFile) {
+            res.sendFile(filename);
+        } else {
+            res.sendfile(filename);
+        }
+    }
+    
     RED.httpAdmin.get('/swagger-client/js/*', function(req, res){
         var filename = path.join(__dirname , '../js', req.params[0]);
-        res.sendfile(filename);
+        sendFile(filename);
     });
 }
