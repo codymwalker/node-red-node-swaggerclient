@@ -115,6 +115,6 @@ module.exports = function(RED) {
     
     RED.httpAdmin.get('/swagger-client/js/*', function(req, res){
         var filename = path.join(__dirname , '../js', req.params[0]);
-        sendFile(filename);
+        sendFile(res, filename);
     });
 }
