@@ -3,6 +3,7 @@ module.exports = function(RED) {
     "use strict";
     var path = require("path");
     var swaggerjs = require('swagger-client');
+    var request = require('request');
     
     function SwaggerClientNode(config) {
         RED.nodes.createNode(this,config);
@@ -18,7 +19,7 @@ module.exports = function(RED) {
                 return;
             }
             
-            //console.log('url: ' + url);
+            console.log('url: ' + url);
             //console.log('api: ' + api);
             //console.log('resource: ' + resource);
             //console.log('params: ' + JSON.stringify(params));
@@ -113,8 +114,29 @@ module.exports = function(RED) {
         }
     }
     
+    function proxySwaggerRequest(res, url){
+        request.get(url, function(err, resp, data){
+            if(err){
+                res.status(500).send(err);
+            } else if(resp.statusCode !== 200){
+                res.status(resp.statusCode).send(data);
+            } else{
+                res.send(data);
+            }
+        })
+    }
+    
     RED.httpAdmin.get('/swagger-client/js/*', function(req, res){
         var filename = path.join(__dirname , '../js', req.params[0]);
         sendFile(res, filename);
     });
+    
+    RED.httpAdmin.get('/swagger-client/proxy', function(req, res){
+        if(req.query && req.query.swaggerUrl){
+            var url = decodeURIComponent(req.query.swaggerUrl);
+            proxySwaggerRequest(res, url);
+        } else{
+            res.status(400).send('Please pass a valid Swagger URL as a query param.');
+        }
+    })
 }

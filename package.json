@@ -20,6 +20,7 @@
   "author": "Cody Walker <cody@cody-walker.com>",
   "dependencies": {
         "swagger-client": ">2.1.0",
-        "i18next-client": "1.10.2"
+        "i18next-client": "1.10.2",
+        "request": "2.x.x"
     }
 }
