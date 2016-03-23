@@ -92,6 +92,10 @@ module.exports = function(RED) {
     
     function getMissingParams(reqParams, params){
         var missingParams;
+        if ( ! reqParams )
+        {
+            return null;
+        }
         for(var i=0; i< reqParams.length; i++){
             if(!(params && params.hasOwnProperty(reqParams[i]))){
                 if(!missingParams){
