@@ -9,41 +9,50 @@ module.exports = function(RED) {
         RED.nodes.createNode(this,config);
         var node = this;
         this.on('input', function(msg) {
-            var url = config.url || msg.url;
-            var api = config.api || msg.api;
-            var resource = config.resource || msg.resource;
-            var params = config.params || msg.params;
+            var url      = msg.url || config.url;
+            var api      = msg.api || config.api;
+            var resource = msg.resource || config.resource;
+            var params   = msg.params || config.params;
             
             if(! (url && api && resource)){
                 node.error('Missing configuration values', msg);
                 return;
             }
             
-            console.log('url: ' + url);
+            console.log('Swagger URL: ' + url);
             //console.log('api: ' + api);
             //console.log('resource: ' + resource);
-            //console.log('params: ' + JSON.stringify(params));
+            //console.log('params: ');
+            //console.log(params);
             
             if(params && params['_isModel']){
+                var messageBody = {};
                 for(var key in params){
                     if(key != '_isModel'){
                         try{
-                            params = {
-                                body: JSON.parse(params[key])
-                            }
+                            //params = {
+                            //    body: JSON.parse(params[key])
+                            //}
+                            messageBody = JSON.parse(params[key]);
+                            params.body = params[key];
+                            //params[key] = JSON.parse(params[key]);
                         } catch(e){
-                            node.error('Bad JSON in object: ' + key, msg);
-                            return;
+                            //node.error('Bad JSON in object: ' + key, msg);
+                            //return;
+                            console.log('No JSON in object: ' + key);
+                            //console.log(params[key]);
                         }
-                        
                     }
                 }
             }
-            
+            //console.log('final params:');
+            //console.log(params);
+    
+            //var client = new Swagger({
             var client = new swaggerjs.SwaggerClient({
                 url: url,
                 success: function() {
-                    
+                    client.clientAuthorizations.add("api_key", new swaggerjs.ApiKeyAuthorization("_apikey", params._apikey, "query"));
                     //Check for missing params
                     var missingParams = getMissingParams(findApiReqParams(api, resource, client.apisArray), params);
                     
@@ -51,6 +60,8 @@ module.exports = function(RED) {
                         node.error('Missing params: ' + missingParams.toString(), msg);
                         return;
                     } else{
+                        //console.log('Client params:');
+                        //console.log(params);
                         client[api][resource](params, {responseContentType: 'application/json'}, function(resp){
                             msg.statusCode = resp.status;
                             msg.payload = resp.obj;
@@ -67,6 +78,12 @@ module.exports = function(RED) {
                 failure: function(err) {
                     node.error(err, msg);
                     return;
+                },
+                authorizations : {
+                    //easyapi_basic  : new client.PasswordAuthorization('<username>', '<password>'),
+                    //someHeaderAuth : new client.ApiKeyAuthorization('<nameOfHeader>', '<value>', 'header'),
+                    "apiKey"  : new swaggerjs.ApiKeyAuthorization('_apikey', '_apikey', 'query')
+                    //someCookieAuth : new client.CookieAuthorization('<cookie>'),
                 }
             })
         });
@@ -83,6 +100,8 @@ module.exports = function(RED) {
                                 reqParams.push(apisArray[i].operationsArray[j].operation.parameters[k].name);
                             }
                         }
+                        //console.log('required Params:');
+                        //console.log(reqParams);
                         return reqParams;
                     }
                 }
@@ -92,6 +111,10 @@ module.exports = function(RED) {
     
     function getMissingParams(reqParams, params){
         var missingParams;
+        if ( ! reqParams )
+        {
+            return null;
+        }
         for(var i=0; i< reqParams.length; i++){
             if(!(params && params.hasOwnProperty(reqParams[i]))){
                 if(!missingParams){
@@ -100,6 +123,8 @@ module.exports = function(RED) {
                 missingParams.push(reqParams[i]);
             }
         }
+        //console.log('missing Params:');
+        //console.log(missingParams);
         return(missingParams || null);
     }
     

@@ -191,8 +191,9 @@ pre {
                     //console.log('type is a definition');
                     var model = type.match(/<span class="strong">(.*?)\{/g)[0];
                     model = model.substring(model.indexOf('<span class="strong">') + 21, model.lastIndexOf('{')).trim();
-                    type = model;
+                    type  = model;
                     var model = getModel(model);
+                    model.id   = id;
                     model.info = info;
                     return model
                 } else{
@@ -228,7 +229,7 @@ pre {
                         currProp.items = parseArrayItems(currProp.items);
                         //console.log(currProp.items);
                     } else{
-                        //console.log('found something simple... ' + p + ' with type: ' + currProp.type);
+                        console.log('found something simple... ' + p + ' with type: ' + currProp.type);
                     }
                     parsedProps[p] = currProp;
                 }
@@ -281,14 +282,16 @@ pre {
             function addModelParamRowToTable(param){
                 
                 var convertedParam = convertObjectToText(param);
-                
+                console.log(param);
                 $('#swaggerclient-paramslisttable').find('tbody')
                     .append($('<tr>', {class: 'paramRow'})
                         .append($('<td>')
                             .append($('<span>', {class: 'paramId'})
-                                .text(param.model_id)
+                                .text(param.id)
+                                //.text(param.model_id)
                             )
                             .append($('<div>', {style: 'font-size:8px; margin-left: 20px'})
+                                .text(param.model_id)
                                 .text(param.info)
                             )
                         )
@@ -332,6 +335,7 @@ pre {
                     }
                     convertedObj[p] = type;
                 }
+                console.log(convertedObj);
                 return convertedObj;
             }
             
