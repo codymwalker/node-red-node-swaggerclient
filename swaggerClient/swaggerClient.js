@@ -9,17 +9,17 @@ module.exports = function(RED) {
         RED.nodes.createNode(this,config);
         var node = this;
         this.on('input', function(msg) {
-            var url = config.url || msg.url;
-            var api = config.api || msg.api;
-            var resource = config.resource || msg.resource;
-            var params = config.params || msg.params;
+            var url      = msg.url || config.url;
+            var api      = msg.api || config.api;
+            var resource = msg.resource || config.resource;
+            var params   = msg.params || config.params;
             
             if(! (url && api && resource)){
                 node.error('Missing configuration values', msg);
                 return;
             }
             
-            console.log('url: ' + url);
+            console.log('Swagger URL: ' + url);
             //console.log('api: ' + api);
             //console.log('resource: ' + resource);
             //console.log('params: ' + JSON.stringify(params));
